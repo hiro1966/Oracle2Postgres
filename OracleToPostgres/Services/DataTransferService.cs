@@ -5,6 +5,7 @@ using System.Data.Odbc;
 using System.Threading.Tasks;
 using Npgsql;
 using Serilog;
+using OracleToPostgres.Models;
 
 namespace OracleToPostgres.Services
 {
@@ -12,66 +13,137 @@ namespace OracleToPostgres.Services
     {
         private readonly string _oracleConnectionString;
         private readonly string _postgresConnectionString;
-        private readonly string _oracleQuery;
-        private readonly string _postgresTableName;
         private readonly int _batchSize;
+        private readonly DataTransformService _transformService;
 
         public event EventHandler<ProgressEventArgs>? ProgressChanged;
         public event EventHandler<string>? LogMessageReceived;
+        public event EventHandler<TaskProgressEventArgs>? TaskProgressChanged;
 
         public DataTransferService(
             string oracleConnectionString,
             string postgresConnectionString,
-            string oracleQuery,
-            string postgresTableName,
             int batchSize)
         {
             _oracleConnectionString = oracleConnectionString;
             _postgresConnectionString = postgresConnectionString;
-            _oracleQuery = oracleQuery;
-            _postgresTableName = postgresTableName;
             _batchSize = batchSize;
+            _transformService = new DataTransformService();
         }
 
-        public async Task<TransferResult> TransferDataAsync()
+        /// <summary>
+        /// 複数のタスクを順次実行してデータ転送を行う
+        /// </summary>
+        public async Task<MultiTaskTransferResult> TransferDataAsync(List<DataTransferTask> tasks)
         {
-            var result = new TransferResult();
+            var multiResult = new MultiTaskTransferResult();
             var startTime = DateTime.Now;
 
             try
             {
-                LogMessage("データ転送を開始します...");
+                LogMessage($"データ転送を開始します（タスク数: {tasks.Count}）");
                 LogMessage($"Oracle接続: {MaskConnectionString(_oracleConnectionString)}");
                 LogMessage($"PostgreSQL接続: {MaskConnectionString(_postgresConnectionString)}");
 
-                // Oracleからデータを読み込み
-                var dataTable = await ReadFromOracleAsync();
+                multiResult.TotalTasks = tasks.Count;
+
+                foreach (var task in tasks)
+                {
+                    LogMessage($"========================================");
+                    LogMessage($"タスク開始: {task.TaskName}");
+                    LogMessage($"========================================");
+
+                    var taskResult = await TransferSingleTaskAsync(task);
+                    multiResult.TaskResults.Add(taskResult);
+
+                    multiResult.CompletedTasks++;
+                    multiResult.TotalRecordsProcessed += taskResult.ProcessedRecords;
+
+                    OnTaskProgressChanged(new TaskProgressEventArgs(
+                        task.TaskName,
+                        multiResult.CompletedTasks,
+                        multiResult.TotalTasks,
+                        taskResult.IsSuccess
+                    ));
+
+                    if (!taskResult.IsSuccess)
+                    {
+                        LogMessage($"⚠ タスク '{task.TaskName}' でエラーが発生しましたが、次のタスクを続行します");
+                    }
+                }
+
+                multiResult.IsSuccess = multiResult.TaskResults.TrueForAll(r => r.IsSuccess);
+                multiResult.Duration = DateTime.Now - startTime;
+
+                LogMessage($"========================================");
+                LogMessage($"全タスク完了: {multiResult.CompletedTasks}/{multiResult.TotalTasks}");
+                LogMessage($"総処理レコード数: {multiResult.TotalRecordsProcessed} 件");
+                LogMessage($"総処理時間: {multiResult.Duration.TotalSeconds:F2} 秒");
+                LogMessage($"========================================");
+            }
+            catch (Exception ex)
+            {
+                multiResult.IsSuccess = false;
+                multiResult.ErrorMessage = ex.Message;
+                multiResult.Duration = DateTime.Now - startTime;
+
+                Log.Error(ex, "データ転送中に予期しないエラーが発生しました");
+                LogMessage($"エラー: {ex.Message}");
+            }
+
+            return multiResult;
+        }
+
+        /// <summary>
+        /// 単一のタスクを実行
+        /// </summary>
+        private async Task<TransferResult> TransferSingleTaskAsync(DataTransferTask task)
+        {
+            var result = new TransferResult { TaskName = task.TaskName };
+            var startTime = DateTime.Now;
+
+            try
+            {
+                // 1. データの読み込み（Oracle）
+                LogMessage($"[{task.TaskName}] Oracleからデータを読み込んでいます...");
+                var dataTable = await ReadFromOracleAsync(task.OracleQuery, task.TaskName);
                 result.TotalRecords = dataTable.Rows.Count;
+                LogMessage($"[{task.TaskName}] {result.TotalRecords} 件のレコードを読み込みました");
 
-                LogMessage($"Oracleから {result.TotalRecords} 件のレコードを読み込みました");
+                // 2. データの変換
+                if (task.EnableTransform)
+                {
+                    LogMessage($"[{task.TaskName}] データ変換を実行しています...");
+                    dataTable = _transformService.Transform(dataTable, task.TaskName);
+                    LogMessage($"[{task.TaskName}] データ変換が完了しました");
+                }
+                else
+                {
+                    LogMessage($"[{task.TaskName}] データ変換はスキップされます");
+                }
 
-                // PostgreSQLへデータを書き込み
-                await WriteToPostgresAsync(dataTable, result);
+                // 3. データの書き込み（PostgreSQL）
+                LogMessage($"[{task.TaskName}] PostgreSQLへデータを書き込んでいます...");
+                await WriteToPostgresAsync(dataTable, task.PostgresTableName, task.TaskName, result);
 
                 result.IsSuccess = true;
                 result.Duration = DateTime.Now - startTime;
-                LogMessage($"データ転送完了: {result.ProcessedRecords}/{result.TotalRecords} 件");
-                LogMessage($"処理時間: {result.Duration.TotalSeconds:F2} 秒");
+                LogMessage($"[{task.TaskName}] 完了: {result.ProcessedRecords}/{result.TotalRecords} 件（{result.Duration.TotalSeconds:F2} 秒）");
             }
             catch (Exception ex)
             {
                 result.IsSuccess = false;
                 result.ErrorMessage = ex.Message;
                 result.Duration = DateTime.Now - startTime;
-                
-                Log.Error(ex, "データ転送中にエラーが発生しました");
-                LogMessage($"エラー: {ex.Message}");
+
+                Log.Error(ex, $"[{task.TaskName}] データ転送中にエラーが発生しました");
+                LogMessage($"[{task.TaskName}] エラー: {ex.Message}");
             }
 
             return result;
         }
 
-        private async Task<DataTable> ReadFromOracleAsync()
+        private async Task<DataTable> ReadFromOracleAsync(string query, string taskName)
         {
             var dataTable = new DataTable();
 
@@ -79,9 +151,9 @@ namespace OracleToPostgres.Services
             {
                 using var connection = new OdbcConnection(_oracleConnectionString);
                 connection.Open();
-                LogMessage("Oracle接続成功");
+                LogMessage($"[{taskName}] Oracle接続成功");
 
-                using var command = new OdbcCommand(_oracleQuery, connection);
+                using var command = new OdbcCommand(query, connection);
                 command.CommandTimeout = 300; // 5分
 
                 using var adapter = new OdbcDataAdapter(command);
@@ -91,14 +163,14 @@ namespace OracleToPostgres.Services
             return dataTable;
         }
 
-        private async Task WriteToPostgresAsync(DataTable dataTable, TransferResult result)
+        private async Task WriteToPostgresAsync(DataTable dataTable, string tableName, string taskName, TransferResult result)
         {
             await using var connection = new NpgsqlConnection(_postgresConnectionString);
             await connection.OpenAsync();
-            LogMessage("PostgreSQL接続成功");
+            LogMessage($"[{taskName}] PostgreSQL接続成功");
 
             // テーブルが存在しない場合は作成
-            await CreateTableIfNotExistsAsync(connection, dataTable);
+            await CreateTableIfNotExistsAsync(connection, dataTable, tableName, taskName);
 
             var processedCount = 0;
             var batch = new List<DataRow>();
@@ -109,12 +181,12 @@ namespace OracleToPostgres.Services
 
                 if (batch.Count >= _batchSize)
                 {
-                    await InsertBatchAsync(connection, batch, dataTable.Columns);
+                    await InsertBatchAsync(connection, batch, dataTable.Columns, tableName);
                     processedCount += batch.Count;
                     result.ProcessedRecords = processedCount;
-                    
+
                     OnProgressChanged(new ProgressEventArgs(result.TotalRecords, processedCount));
-                    LogMessage($"進捗: {processedCount}/{result.TotalRecords} 件処理完了");
+                    LogMessage($"[{taskName}] 進捗: {processedCount}/{result.TotalRecords} 件処理完了");
 
                     batch.Clear();
                 }
@@ -123,16 +195,16 @@ namespace OracleToPostgres.Services
             // 残りのデータを挿入
             if (batch.Count > 0)
             {
-                await InsertBatchAsync(connection, batch, dataTable.Columns);
+                await InsertBatchAsync(connection, batch, dataTable.Columns, tableName);
                 processedCount += batch.Count;
                 result.ProcessedRecords = processedCount;
-                
+
                 OnProgressChanged(new ProgressEventArgs(result.TotalRecords, processedCount));
-                LogMessage($"進捗: {processedCount}/{result.TotalRecords} 件処理完了");
+                LogMessage($"[{taskName}] 進捗: {processedCount}/{result.TotalRecords} 件処理完了");
             }
         }
 
-        private async Task CreateTableIfNotExistsAsync(NpgsqlConnection connection, DataTable dataTable)
+        private async Task CreateTableIfNotExistsAsync(NpgsqlConnection connection, DataTable dataTable, string tableName, string taskName)
         {
             var columns = new List<string>();
 
@@ -143,17 +215,17 @@ namespace OracleToPostgres.Services
             }
 
             var createTableSql = $@"
-                CREATE TABLE IF NOT EXISTS ""{_postgresTableName}"" (
+                CREATE TABLE IF NOT EXISTS ""{tableName}"" (
                     {string.Join(",\n                    ", columns)}
                 )";
 
             await using var command = new NpgsqlCommand(createTableSql, connection);
             await command.ExecuteNonQueryAsync();
-            
-            LogMessage($"テーブル '{_postgresTableName}' を確認/作成しました");
+
+            LogMessage($"[{taskName}] テーブル '{tableName}' を確認/作成しました");
         }
 
-        private async Task InsertBatchAsync(NpgsqlConnection connection, List<DataRow> batch, DataColumnCollection columns)
+        private async Task InsertBatchAsync(NpgsqlConnection connection, List<DataRow> batch, DataColumnCollection columns, string tableName)
         {
             var columnNames = new List<string>();
             foreach (DataColumn column in columns)
@@ -177,7 +249,7 @@ namespace OracleToPostgres.Services
             }
 
             var insertSql = $@"
-                INSERT INTO ""{_postgresTableName}"" ({string.Join(", ", columnNames)})
+                INSERT INTO ""{tableName}"" ({string.Join(", ", columnNames)})
                 VALUES {string.Join(", ", valuePlaceholders)}";
 
             await using var command = new NpgsqlCommand(insertSql, connection);
@@ -218,6 +290,11 @@ namespace OracleToPostgres.Services
             ProgressChanged?.Invoke(this, e);
         }
 
+        private void OnTaskProgressChanged(TaskProgressEventArgs e)
+        {
+            TaskProgressChanged?.Invoke(this, e);
+        }
+
         private void LogMessage(string message)
         {
             Log.Information(message);
@@ -237,12 +314,40 @@ namespace OracleToPostgres.Services
         }
     }
 
+    public class TaskProgressEventArgs : EventArgs
+    {
+        public string TaskName { get; }
+        public int CompletedTasks { get; }
+        public int TotalTasks { get; }
+        public bool IsSuccess { get; }
+
+        public TaskProgressEventArgs(string taskName, int completedTasks, int totalTasks, bool isSuccess)
+        {
+            TaskName = taskName;
+            CompletedTasks = completedTasks;
+            TotalTasks = totalTasks;
+            IsSuccess = isSuccess;
+        }
+    }
+
     public class TransferResult
     {
+        public string TaskName { get; set; } = string.Empty;
         public bool IsSuccess { get; set; }
         public int TotalRecords { get; set; }
         public int ProcessedRecords { get; set; }
         public TimeSpan Duration { get; set; }
         public string? ErrorMessage { get; set; }
+    }
+
+    public class MultiTaskTransferResult
+    {
+        public bool IsSuccess { get; set; }
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int TotalRecordsProcessed { get; set; }
+        public TimeSpan Duration { get; set; }
+        public string? ErrorMessage { get; set; }
+        public List<TransferResult> TaskResults { get; set; } = new List<TransferResult>();
     }
 }

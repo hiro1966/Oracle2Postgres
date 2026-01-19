@@ -2,17 +2,29 @@
 
 ## 設定ファイル (appsettings.json) のサンプル
 
-### 例1: ローカル開発環境
+### 例1: 複数テーブル転送（データ変換なし）
 
 ```json
 {
   "DatabaseSettings": {
     "OracleOdbcConnectionString": "Driver={Oracle in OraClient19Home1};Dbq=//localhost:1521/XE;Uid=system;Pwd=oracle;",
     "PostgresConnectionString": "Host=localhost;Port=5432;Database=testdb;Username=postgres;Password=postgres;",
-    "OracleQuery": "SELECT ID, NAME, EMAIL, CREATED_DATE FROM USERS WHERE ROWNUM <= 10000",
-    "PostgresTableName": "users_imported",
     "BatchSize": 1000
   },
+  "DataTransferTasks": [
+    {
+      "TaskName": "ユーザーデータ転送",
+      "OracleQuery": "SELECT ID, NAME, EMAIL, CREATED_DATE FROM USERS WHERE ROWNUM <= 10000",
+      "PostgresTableName": "users_imported",
+      "EnableTransform": false
+    },
+    {
+      "TaskName": "注文データ転送",
+      "OracleQuery": "SELECT ORDER_ID, USER_ID, AMOUNT, ORDER_DATE FROM ORDERS WHERE ORDER_DATE >= SYSDATE - 30",
+      "PostgresTableName": "orders_imported",
+      "EnableTransform": false
+    }
+  ],
   "Logging": {
     "LogFilePath": "Logs/app-{Date}.log",
     "MinimumLevel": "Debug"
@@ -24,17 +36,35 @@
 }
 ```
 
-### 例2: 本番環境（大量データ）
+### 例2: データ変換を含む転送
 
 ```json
 {
   "DatabaseSettings": {
     "OracleOdbcConnectionString": "Driver={Oracle in OraClient19Home1};Dbq=//prod-oracle.company.com:1521/PRODDB;Uid=etl_user;Pwd=SecurePass123;",
     "PostgresConnectionString": "Host=prod-postgres.company.com;Port=5432;Database=datawarehouse;Username=etl_user;Password=SecurePass456;",
-    "OracleQuery": "SELECT * FROM SALES_DATA WHERE EXTRACT(YEAR FROM SALE_DATE) = 2024",
-    "PostgresTableName": "sales_data_2024",
     "BatchSize": 5000
   },
+  "DataTransferTasks": [
+    {
+      "TaskName": "売上データ転送（変換あり）",
+      "OracleQuery": "SELECT * FROM SALES_DATA WHERE EXTRACT(YEAR FROM SALE_DATE) = 2024",
+      "PostgresTableName": "sales_data_2024",
+      "EnableTransform": true
+    },
+    {
+      "TaskName": "顧客マスタ転送（変換なし）",
+      "OracleQuery": "SELECT * FROM CUSTOMERS WHERE STATUS = 'ACTIVE'",
+      "PostgresTableName": "customers",
+      "EnableTransform": false
+    },
+    {
+      "TaskName": "商品マスタ転送（変換あり）",
+      "OracleQuery": "SELECT PRODUCT_ID, PRODUCT_NAME, PRICE, STOCK FROM PRODUCTS",
+      "PostgresTableName": "products",
+      "EnableTransform": true
+    }
+  ],
   "Logging": {
     "LogFilePath": "Logs/transfer-{Date}.log",
     "MinimumLevel": "Information"
@@ -42,6 +72,34 @@
   "AppSettings": {
     "AutoCloseOnCompletion": true,
     "CloseDelaySeconds": 10
+  }
+}
+```
+
+### 例3: 単一タスク（シンプルな転送）
+
+```json
+{
+  "DatabaseSettings": {
+    "OracleOdbcConnectionString": "Driver={Oracle in OraClient19Home1};Dbq=//localhost:1521/ORCL;Uid=user;Pwd=pass;",
+    "PostgresConnectionString": "Host=localhost;Port=5432;Database=mydb;Username=user;Password=pass;",
+    "BatchSize": 2000
+  },
+  "DataTransferTasks": [
+    {
+      "TaskName": "メインデータ転送",
+      "OracleQuery": "SELECT * FROM MY_TABLE",
+      "PostgresTableName": "my_table_copy",
+      "EnableTransform": false
+    }
+  ],
+  "Logging": {
+    "LogFilePath": "Logs/app-{Date}.log",
+    "MinimumLevel": "Information"
+  },
+  "AppSettings": {
+    "AutoCloseOnCompletion": true,
+    "CloseDelaySeconds": 3
   }
 }
 ```

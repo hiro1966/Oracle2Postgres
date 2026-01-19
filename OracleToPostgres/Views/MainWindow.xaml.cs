@@ -73,16 +73,26 @@ namespace OracleToPostgres.Views
                 // 設定を読み込み
                 var oracleConn = _configService.GetOracleConnectionString();
                 var postgresConn = _configService.GetPostgresConnectionString();
-                var oracleQuery = _configService.GetOracleQuery();
-                var postgresTable = _configService.GetPostgresTableName();
                 var batchSize = _configService.GetBatchSize();
+                var tasks = _configService.GetDataTransferTasks();
+
+                if (tasks.Count == 0)
+                {
+                    _viewModel.AddLogMessage("⚠ 転送タスクが設定されていません");
+                    MessageBox.Show(
+                        "appsettings.json に DataTransferTasks が設定されていません。",
+                        "警告",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                _viewModel.AddLogMessage($"転送タスク数: {tasks.Count}");
 
                 // データ転送サービスの作成
                 var transferService = new DataTransferService(
                     oracleConn,
                     postgresConn,
-                    oracleQuery,
-                    postgresTable,
                     batchSize);
 
                 // イベントハンドラの設定
@@ -92,7 +102,14 @@ namespace OracleToPostgres.Views
                     {
                         _viewModel.TotalRecords = args.TotalRecords;
                         _viewModel.ProcessedRecords = args.ProcessedRecords;
-                        _viewModel.StatusMessage = $"データ転送中... ({args.ProcessedRecords}/{args.TotalRecords})";
+                    });
+                };
+
+                transferService.TaskProgressChanged += (s, args) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        _viewModel.StatusMessage = $"タスク実行中: {args.TaskName} ({args.CompletedTasks}/{args.TotalTasks})";
                     });
                 };
 
@@ -101,16 +118,18 @@ namespace OracleToPostgres.Views
                     _viewModel.AddLogMessage(message);
                 };
 
-                // データ転送実行
-                var result = await Task.Run(() => transferService.TransferDataAsync());
+                // データ転送実行（複数タスク）
+                var result = await Task.Run(() => transferService.TransferDataAsync(tasks));
 
                 // 結果の表示
                 if (result.IsSuccess)
                 {
-                    _viewModel.StatusMessage = "データ転送完了！";
-                    _viewModel.AddLogMessage($"✓ 正常に完了しました ({result.ProcessedRecords} 件)");
-                    _viewModel.AddLogMessage($"処理時間: {result.Duration.TotalSeconds:F2} 秒");
-                    
+                    _viewModel.StatusMessage = "全タスク完了！";
+                    _viewModel.AddLogMessage($"✓ 正常に完了しました");
+                    _viewModel.AddLogMessage($"  完了タスク: {result.CompletedTasks}/{result.TotalTasks}");
+                    _viewModel.AddLogMessage($"  総処理レコード: {result.TotalRecordsProcessed} 件");
+                    _viewModel.AddLogMessage($"  総処理時間: {result.Duration.TotalSeconds:F2} 秒");
+
                     Log.Information("データ転送が正常に完了しました");
 
                     // 自動終了の処理
@@ -118,20 +137,25 @@ namespace OracleToPostgres.Views
                     {
                         var delaySeconds = _configService.GetCloseDelaySeconds();
                         _viewModel.AddLogMessage($"{delaySeconds}秒後にアプリケーションを終了します...");
-                        
+
                         await Task.Delay(delaySeconds * 1000);
                         Application.Current.Shutdown();
                     }
                 }
                 else
                 {
-                    _viewModel.StatusMessage = "エラーが発生しました";
-                    _viewModel.AddLogMessage($"✗ エラー: {result.ErrorMessage}");
-                    
+                    var failedTasks = result.TaskResults.FindAll(r => !r.IsSuccess);
+                    _viewModel.StatusMessage = $"一部のタスクでエラーが発生しました ({failedTasks.Count}件)";
+                    _viewModel.AddLogMessage($"✗ エラーが発生したタスク:");
+                    foreach (var taskResult in failedTasks)
+                    {
+                        _viewModel.AddLogMessage($"  - {taskResult.TaskName}: {taskResult.ErrorMessage}");
+                    }
+
                     Log.Error("データ転送中にエラーが発生: {Error}", result.ErrorMessage);
-                    
+
                     MessageBox.Show(
-                        $"データ転送中にエラーが発生しました:\n\n{result.ErrorMessage}",
+                        $"一部のタスクでエラーが発生しました:\n\n{string.Join("\n", failedTasks.ConvertAll(r => $"- {r.TaskName}: {r.ErrorMessage}"))}",
                         "エラー",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
@@ -141,9 +165,9 @@ namespace OracleToPostgres.Views
             {
                 _viewModel.StatusMessage = "予期しないエラーが発生しました";
                 _viewModel.AddLogMessage($"✗ 予期しないエラー: {ex.Message}");
-                
+
                 Log.Error(ex, "予期しないエラーが発生しました");
-                
+
                 MessageBox.Show(
                     $"予期しないエラーが発生しました:\n\n{ex.Message}",
                     "エラー",

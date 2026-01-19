@@ -6,6 +6,8 @@ Windows 10用のデスクトップアプリケーションで、Oracleデータ�
 
 - ✅ ODBC経由でOracleデータベースに接続
 - ✅ PostgreSQLへのデータ書き込み（Npgsql使用）
+- ✅ **複数クエリ対応**（複数テーブルの一括転送）
+- ✅ **データ変換機能**（カスタマイズ可能な変換ロジック）
 - ✅ リアルタイム進捗グラフ表示（LiveCharts2）
 - ✅ 詳細なログ出力（Serilog）
 - ✅ 自動起動・自動終了機能
@@ -82,17 +84,29 @@ https://www.oracle.com/database/technologies/instant-client/downloads.html
 
 ### 4. 設定ファイルの編集
 
-`appsettings.json` を開いて、接続情報を設定：
+`appsettings.json` を開いて、接続情報とタスクを設定：
 
 ```json
 {
   "DatabaseSettings": {
     "OracleOdbcConnectionString": "Driver={Oracle in OraClient19Home1};Dbq=//your-oracle-host:1521/YOUR_SID;Uid=your_user;Pwd=your_password;",
     "PostgresConnectionString": "Host=your-postgres-host;Port=5432;Database=your_database;Username=your_user;Password=your_password;",
-    "OracleQuery": "SELECT * FROM YOUR_SOURCE_TABLE",
-    "PostgresTableName": "destination_table",
     "BatchSize": 1000
   },
+  "DataTransferTasks": [
+    {
+      "TaskName": "タスク1: ユーザーデータ転送",
+      "OracleQuery": "SELECT * FROM USERS",
+      "PostgresTableName": "users_imported",
+      "EnableTransform": false
+    },
+    {
+      "TaskName": "タスク2: 注文データ転送",
+      "OracleQuery": "SELECT * FROM ORDERS WHERE ORDER_DATE >= SYSDATE - 30",
+      "PostgresTableName": "orders_imported",
+      "EnableTransform": true
+    }
+  ],
   "Logging": {
     "LogFilePath": "Logs/app-{Date}.log",
     "MinimumLevel": "Information"
@@ -113,9 +127,13 @@ https://www.oracle.com/database/technologies/instant-client/downloads.html
   - `Uid`: Oracleユーザー名
   - `Pwd`: Oracleパスワード
 - `PostgresConnectionString`: PostgreSQL接続文字列
+- `BatchSize`: 一度に書き込むレコード数（パフォーマンス調整用）
+
+**DataTransferTasks:** （複数設定可能）
+- `TaskName`: タスクの名前（ログ表示用）
 - `OracleQuery`: Oracleから実行するSQLクエリ
 - `PostgresTableName`: PostgreSQLの書き込み先テーブル名
-- `BatchSize`: 一度に書き込むレコード数（パフォーマンス調整用）
+- `EnableTransform`: データ変換を有効にするか（true/false）
 
 **Logging:**
 - `LogFilePath`: ログファイルの出力先
@@ -176,7 +194,7 @@ bin\Release\net6.0-windows\
 ## 使い方
 
 1. **設定ファイルを確認**
-   - `appsettings.json` の接続情報が正しいことを確認
+   - `appsettings.json` の接続情報とタスク設定が正しいことを確認
 
 2. **アプリケーションを起動**
    - `OracleToPostgres.exe` をダブルクリック
@@ -184,15 +202,76 @@ bin\Release\net6.0-windows\
 
 3. **自動処理**
    - 起動すると自動的にデータ転送が開始されます
+   - 複数のタスクが順次実行されます
    - 進捗状況がリアルタイムでグラフとログに表示されます
 
 4. **処理完了**
-   - 成功すると「データ転送完了！」と表示されます
-   - `AutoCloseOnCompletion: true` の場合、3秒後に自動終了します
+   - 成功すると「全タスク完了！」と表示されます
+   - 各タスクの処理結果がログに記録されます
+   - `AutoCloseOnCompletion: true` の場合、指定秒数後に自動終了します
    - エラーが発生した場合はダイアログで通知されます
 
 5. **ログ確認**
    - `Logs\app-YYYY-MM-DD.log` に詳細ログが出力されます
+
+## データ変換機能
+
+### 変換機能の有効化
+
+`appsettings.json` でタスクごとに変換の有効/無効を設定：
+
+```json
+{
+  "DataTransferTasks": [
+    {
+      "TaskName": "変換なしタスク",
+      "EnableTransform": false  // ← 変換しない
+    },
+    {
+      "TaskName": "変換ありタスク",
+      "EnableTransform": true   // ← 変換する
+    }
+  ]
+}
+```
+
+### 変換ロジックのカスタマイズ
+
+`Services/DataTransformService.cs` の `Transform()` メソッドを編集：
+
+```csharp
+public DataTable Transform(DataTable dataTable, string taskName)
+{
+    foreach (DataRow row in dataTable.Rows)
+    {
+        // 日付カラムの変換
+        if (dataTable.Columns.Contains("CREATED_DATE"))
+        {
+            row["CREATED_DATE"] = TransformDate(row["CREATED_DATE"]);
+        }
+
+        // 金額カラムの変換
+        if (dataTable.Columns.Contains("AMOUNT"))
+        {
+            row["AMOUNT"] = Math.Round(Convert.ToDecimal(row["AMOUNT"]), 2);
+        }
+
+        // ステータスコードの変換
+        if (dataTable.Columns.Contains("STATUS"))
+        {
+            row["STATUS"] = row["STATUS"]?.ToString() switch
+            {
+                "1" => "Active",
+                "2" => "Inactive",
+                _ => "Unknown"
+            };
+        }
+    }
+    return dataTable;
+}
+```
+
+**詳細は `DATA_TRANSFORM_GUIDE.md` を参照してください。**
 
 ## トラブルシューティング
 

@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
+using OracleToPostgres.Models;
 
 namespace OracleToPostgres.Services
 {
@@ -20,14 +23,16 @@ namespace OracleToPostgres.Services
         public string GetPostgresConnectionString() =>
             _configuration["DatabaseSettings:PostgresConnectionString"] ?? string.Empty;
 
-        public string GetOracleQuery() =>
-            _configuration["DatabaseSettings:OracleQuery"] ?? string.Empty;
-
-        public string GetPostgresTableName() =>
-            _configuration["DatabaseSettings:PostgresTableName"] ?? string.Empty;
-
         public int GetBatchSize() =>
             int.TryParse(_configuration["DatabaseSettings:BatchSize"], out var size) ? size : 1000;
+
+        public List<DataTransferTask> GetDataTransferTasks()
+        {
+            var tasks = _configuration.GetSection("DataTransferTasks")
+                .Get<List<DataTransferTask>>();
+
+            return tasks ?? new List<DataTransferTask>();
+        }
 
         public string GetLogFilePath() =>
             _configuration["Logging:LogFilePath"] ?? "Logs/app-{Date}.log";
