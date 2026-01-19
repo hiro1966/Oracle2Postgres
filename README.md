@@ -11,6 +11,7 @@ Windows 10用のデスクトップアプリケーションで、Oracleデータ�
 - ✅ 自動起動・自動終了機能
 - ✅ バッチ処理でパフォーマンス最適化
 - ✅ エラーハンドリングと詳細ログ
+- ✅ **完全オフライン環境対応**（NuGetパッケージ同梱）
 
 ## 必要な環境
 
@@ -32,7 +33,9 @@ Windows 10用のデスクトップアプリケーションで、Oracleデータ�
 OracleToPostgres.sln をダブルクリック
 ```
 
-### 2. NuGetパッケージの復元
+### 2. NuGetパッケージの準備
+
+#### オンライン環境の場合
 
 Visual Studioが自動的にNuGetパッケージを復元します。
 手動で復元する場合：
@@ -40,6 +43,27 @@ Visual Studioが自動的にNuGetパッケージを復元します。
 ```
 ソリューションを右クリック → "NuGetパッケージの復元"
 ```
+
+#### 🔒 オフライン環境の場合（推奨）
+
+**このプロジェクトは完全オフライン対応です！**
+
+1. **オンライン環境で準備**（初回のみ）
+   ```powershell
+   # プロジェクトルートで実行
+   .\download-packages.ps1
+   ```
+   または
+   ```bash
+   nuget restore OracleToPostgres.sln -PackagesDirectory packages
+   ```
+
+2. **オフライン環境へ転送**
+   - プロジェクトフォルダ全体（`packages/` フォルダを含む）をコピー
+   - Visual Studio 2022 で開く
+   - **インターネット接続不要でビルド可能**
+
+詳細は `packages/README.md` を参照してください。
 
 ### 3. Oracle ODBCドライバのインストール
 

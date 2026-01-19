@@ -5,5 +5,4 @@ obj/
 *.cache
 .vs/
 Logs/
-packages/
 *.log
