@@ -2,7 +2,71 @@
 
 ## 設定ファイル (appsettings.json) のサンプル
 
-### 例1: 複数テーブル転送（データ変換なし）
+### 例1: PostgreSQLサーバー情報を使った転送
+
+```json
+{
+  "DatabaseSettings": {
+    "OracleOdbcConnectionString": "Driver={Oracle in OraClient19Home1};Dbq=//localhost:1521/XE;Uid=system;Pwd=oracle;",
+    "PostgresConnectionString": "Host=localhost;Port=5432;Database=testdb;Username=postgres;Password=postgres;",
+    "BatchSize": 1000
+  },
+  "PostgresServers": {
+    "dashboard": {
+      "Name": "dashbord",
+      "Group": "Servers",
+      "Host": "localhost",
+      "Port": 5432,
+      "MaintenanceDB": "hospital_db",
+      "Username": "hospital_user",
+      "Password": "your_password",
+      "ConnectionParameters": {
+        "SslMode": "prefer",
+        "ConnectTimeout": 10
+      }
+    },
+    "warehouse": {
+      "Name": "Data Warehouse",
+      "Group": "Servers",
+      "Host": "warehouse.company.com",
+      "Port": 5432,
+      "MaintenanceDB": "warehouse_db",
+      "Username": "etl_user",
+      "Password": "etl_password",
+      "ConnectionParameters": {
+        "SslMode": "require",
+        "ConnectTimeout": 30
+      }
+    }
+  },
+  "DataTransferTasks": [
+    {
+      "TaskName": "病院データベースへの転送",
+      "OracleQuery": "SELECT * FROM PATIENTS",
+      "PostgresTableName": "patients",
+      "PostgresServerKey": "dashboard",
+      "EnableTransform": false
+    },
+    {
+      "TaskName": "データウェアハウスへの転送",
+      "OracleQuery": "SELECT * FROM SALES_DATA",
+      "PostgresTableName": "sales",
+      "PostgresServerKey": "warehouse",
+      "EnableTransform": true
+    }
+  ],
+  "Logging": {
+    "LogFilePath": "Logs/app-{Date}.log",
+    "MinimumLevel": "Debug"
+  },
+  "AppSettings": {
+    "AutoCloseOnCompletion": false,
+    "CloseDelaySeconds": 5
+  }
+}
+```
+
+### 例2: 複数テーブル転送（データ変換なし）
 
 ```json
 {

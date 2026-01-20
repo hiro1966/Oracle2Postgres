@@ -12,9 +12,10 @@ namespace OracleToPostgres.Services
     public class DataTransferService
     {
         private readonly string _oracleConnectionString;
-        private readonly string _postgresConnectionString;
+        private readonly string _defaultPostgresConnectionString;
         private readonly int _batchSize;
         private readonly DataTransformService _transformService;
+        private readonly ConfigurationService _configService;
 
         public event EventHandler<ProgressEventArgs>? ProgressChanged;
         public event EventHandler<string>? LogMessageReceived;
@@ -23,11 +24,13 @@ namespace OracleToPostgres.Services
         public DataTransferService(
             string oracleConnectionString,
             string postgresConnectionString,
-            int batchSize)
+            int batchSize,
+            ConfigurationService configService)
         {
             _oracleConnectionString = oracleConnectionString;
-            _postgresConnectionString = postgresConnectionString;
+            _defaultPostgresConnectionString = postgresConnectionString;
             _batchSize = batchSize;
+            _configService = configService;
             _transformService = new DataTransformService();
         }
 
@@ -43,7 +46,6 @@ namespace OracleToPostgres.Services
             {
                 LogMessage($"データ転送を開始します（タスク数: {tasks.Count}）");
                 LogMessage($"Oracle接続: {MaskConnectionString(_oracleConnectionString)}");
-                LogMessage($"PostgreSQL接続: {MaskConnectionString(_postgresConnectionString)}");
 
                 multiResult.TotalTasks = tasks.Count;
 
@@ -104,6 +106,28 @@ namespace OracleToPostgres.Services
 
             try
             {
+                // PostgreSQL接続文字列を取得
+                string postgresConnectionString;
+                if (!string.IsNullOrEmpty(task.PostgresServerKey))
+                {
+                    var serverInfo = _configService.GetPostgresServer(task.PostgresServerKey);
+                    if (serverInfo != null)
+                    {
+                        postgresConnectionString = _configService.BuildPostgresConnectionString(serverInfo);
+                        LogMessage($"[{task.TaskName}] PostgreSQLサーバー: {serverInfo.Name} ({serverInfo.Host}:{serverInfo.Port}/{serverInfo.MaintenanceDB})");
+                    }
+                    else
+                    {
+                        LogMessage($"[{task.TaskName}] ⚠ PostgreSQLサーバーキー '{task.PostgresServerKey}' が見つかりません。デフォルト接続を使用します。");
+                        postgresConnectionString = _defaultPostgresConnectionString;
+                    }
+                }
+                else
+                {
+                    postgresConnectionString = _defaultPostgresConnectionString;
+                    LogMessage($"[{task.TaskName}] デフォルトのPostgreSQL接続を使用します");
+                }
+
                 // 1. データの読み込み（Oracle）
                 LogMessage($"[{task.TaskName}] Oracleからデータを読み込んでいます...");
                 var dataTable = await ReadFromOracleAsync(task.OracleQuery, task.TaskName);
@@ -124,7 +148,7 @@ namespace OracleToPostgres.Services
 
                 // 3. データの書き込み（PostgreSQL）
                 LogMessage($"[{task.TaskName}] PostgreSQLへデータを書き込んでいます...");
-                await WriteToPostgresAsync(dataTable, task.PostgresTableName, task.TaskName, result);
+                await WriteToPostgresAsync(dataTable, task.PostgresTableName, task.TaskName, result, postgresConnectionString);
 
                 result.IsSuccess = true;
                 result.Duration = DateTime.Now - startTime;
@@ -163,9 +187,9 @@ namespace OracleToPostgres.Services
             return dataTable;
         }
 
-        private async Task WriteToPostgresAsync(DataTable dataTable, string tableName, string taskName, TransferResult result)
+        private async Task WriteToPostgresAsync(DataTable dataTable, string tableName, string taskName, TransferResult result, string connectionString)
         {
-            await using var connection = new NpgsqlConnection(_postgresConnectionString);
+            await using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
             LogMessage($"[{taskName}] PostgreSQL接続成功");
 

@@ -26,6 +26,35 @@ namespace OracleToPostgres.Services
         public int GetBatchSize() =>
             int.TryParse(_configuration["DatabaseSettings:BatchSize"], out var size) ? size : 1000;
 
+        public Dictionary<string, PostgresServerInfo> GetPostgresServers()
+        {
+            var servers = _configuration.GetSection("PostgresServers")
+                .Get<Dictionary<string, PostgresServerInfo>>();
+
+            return servers ?? new Dictionary<string, PostgresServerInfo>();
+        }
+
+        public PostgresServerInfo? GetPostgresServer(string serverKey)
+        {
+            var servers = GetPostgresServers();
+            return servers.ContainsKey(serverKey) ? servers[serverKey] : null;
+        }
+
+        public string BuildPostgresConnectionString(PostgresServerInfo serverInfo)
+        {
+            var connParams = serverInfo.ConnectionParameters;
+            var sslMode = connParams?.SslMode ?? "prefer";
+            var timeout = connParams?.ConnectTimeout ?? 10;
+
+            return $"Host={serverInfo.Host};" +
+                   $"Port={serverInfo.Port};" +
+                   $"Database={serverInfo.MaintenanceDB};" +
+                   $"Username={serverInfo.Username};" +
+                   $"Password={serverInfo.Password};" +
+                   $"SSL Mode={sslMode};" +
+                   $"Timeout={timeout}";
+        }
+
         public List<DataTransferTask> GetDataTransferTasks()
         {
             var tasks = _configuration.GetSection("DataTransferTasks")

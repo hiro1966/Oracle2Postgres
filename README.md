@@ -93,17 +93,33 @@ https://www.oracle.com/database/technologies/instant-client/downloads.html
     "PostgresConnectionString": "Host=your-postgres-host;Port=5432;Database=your_database;Username=your_user;Password=your_password;",
     "BatchSize": 1000
   },
+  "PostgresServers": {
+    "server1": {
+      "Name": "メインサーバー",
+      "Host": "localhost",
+      "Port": 5432,
+      "MaintenanceDB": "hospital_db",
+      "Username": "hospital_user",
+      "Password": "your_password",
+      "ConnectionParameters": {
+        "SslMode": "prefer",
+        "ConnectTimeout": 10
+      }
+    }
+  },
   "DataTransferTasks": [
     {
       "TaskName": "タスク1: ユーザーデータ転送",
       "OracleQuery": "SELECT * FROM USERS",
       "PostgresTableName": "users_imported",
+      "PostgresServerKey": "server1",
       "EnableTransform": false
     },
     {
       "TaskName": "タスク2: 注文データ転送",
       "OracleQuery": "SELECT * FROM ORDERS WHERE ORDER_DATE >= SYSDATE - 30",
       "PostgresTableName": "orders_imported",
+      "PostgresServerKey": "server1",
       "EnableTransform": true
     }
   ],
@@ -126,13 +142,23 @@ https://www.oracle.com/database/technologies/instant-client/downloads.html
   - `Dbq`: Oracle接続先 (ホスト:ポート/SID)
   - `Uid`: Oracleユーザー名
   - `Pwd`: Oracleパスワード
-- `PostgresConnectionString`: PostgreSQL接続文字列
+- `PostgresConnectionString`: デフォルトのPostgreSQL接続文字列（PostgresServerKeyが未指定の場合に使用）
 - `BatchSize`: 一度に書き込むレコード数（パフォーマンス調整用）
+
+**PostgresServers:** （複数のPostgreSQLサーバーを定義可能）
+- `Name`: サーバーの名前
+- `Host`: ホスト名またはIPアドレス
+- `Port`: ポート番号
+- `MaintenanceDB`: データベース名
+- `Username`: ユーザー名
+- `Password`: パスワード
+- `ConnectionParameters`: 接続パラメータ（SSL設定、タイムアウトなど）
 
 **DataTransferTasks:** （複数設定可能）
 - `TaskName`: タスクの名前（ログ表示用）
 - `OracleQuery`: Oracleから実行するSQLクエリ
 - `PostgresTableName`: PostgreSQLの書き込み先テーブル名
+- `PostgresServerKey`: 使用するPostgreSQLサーバーのキー（省略可能、省略時はデフォルト接続を使用）
 - `EnableTransform`: データ変換を有効にするか（true/false）
 
 **Logging:**

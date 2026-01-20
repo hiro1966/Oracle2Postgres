@@ -93,7 +93,8 @@ namespace OracleToPostgres.Views
                 var transferService = new DataTransferService(
                     oracleConn,
                     postgresConn,
-                    batchSize);
+                    batchSize,
+                    _configService);
 
                 // イベントハンドラの設定
                 transferService.ProgressChanged += (s, args) =>
