@@ -71,9 +71,9 @@ namespace ModelGenerator
                     foreach (var server in servers)
                     {
                         var name = server["Name"] ?? server.Key;
-                        var host = server["Host"];
+                        var serverHost = server["Host"];
                         var db = server["MaintenanceDB"];
-                        Log.Information($"  - {server.Key}: {name} ({host}/{db})");
+                        Log.Information($"  - {server.Key}: {name} ({serverHost}/{db})");
                     }
 
                     Console.WriteLine();
