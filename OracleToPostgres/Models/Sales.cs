@@ -8,19 +8,24 @@ namespace OracleToPostgres.Models
     public class Sales
     {
         [Key]
-        [MaxLength(20)]
-        public string DoctorCode { get; set; }
+        [MaxLength(10)]
+        [Column("doctor_code")]
+        public string DoctorCode { get; set; } = string.Empty;
 
         [Key]
         [MaxLength(7)]
-        public string YearMonth { get; set; }
+        [Column("year_month")]
+        public string YearMonth { get; set; } = string.Empty;
 
         [Required]
-        public long OutpatientSales { get; set; }
+        [Column("outpatient_sales")]
+        public decimal OutpatientSales { get; set; }
 
         [Required]
-        public long InpatientSales { get; set; }
+        [Column("inpatient_sales")]
+        public decimal InpatientSales { get; set; }
 
+        [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
 
     }

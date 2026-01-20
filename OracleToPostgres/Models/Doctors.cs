@@ -8,18 +8,23 @@ namespace OracleToPostgres.Models
     public class Doctors
     {
         [Key]
-        [MaxLength(20)]
-        public string Code { get; set; }
+        [MaxLength(10)]
+        [Column("code")]
+        public string Code { get; set; } = string.Empty;
 
         [MaxLength(100)]
-        public string Name { get; set; }
+        [Column("name")]
+        public string Name { get; set; } = string.Empty;
 
         [MaxLength(10)]
-        public string DepartmentCode { get; set; }
+        [Column("department_code")]
+        public string DepartmentCode { get; set; } = string.Empty;
 
         [Required]
+        [Column("display_order")]
         public int DisplayOrder { get; set; }
 
+        [Column("created_at")]
         public DateTime? CreatedAt { get; set; }
 
     }

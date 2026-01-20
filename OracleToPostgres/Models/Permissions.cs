@@ -8,13 +8,16 @@ namespace OracleToPostgres.Models
     public class Permissions
     {
         [Key]
-        [MaxLength(2)]
-        public string JobTypeCode { get; set; }
+        [MaxLength(10)]
+        [Column("job_type_code")]
+        public string JobTypeCode { get; set; } = string.Empty;
 
         [MaxLength(100)]
-        public string JobTypeName { get; set; }
+        [Column("job_type_name")]
+        public string JobTypeName { get; set; } = string.Empty;
 
         [Required]
+        [Column("level")]
         public int Level { get; set; }
 
     }

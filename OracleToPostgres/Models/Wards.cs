@@ -12,10 +12,10 @@ namespace OracleToPostgres.Models
         public int Id { get; set; }
 
         [MaxLength(10)]
-        public string Code { get; set; }
+        public string Code { get; set; } = string.Empty;
 
         [MaxLength(100)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Required]
         public int Capacity { get; set; }

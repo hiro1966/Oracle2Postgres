@@ -165,8 +165,15 @@ namespace ModelGenerator.Services
                 sb.AppendLine($"        [JsonPropertyName(\"{column.ColumnName}\")]");
             }
 
-            // Property declaration
-            sb.AppendLine($"        public {csharpType} {propertyName} {{ get; set; }}");
+            // Property declaration with default value for non-nullable strings
+            if (csharpType == "string" && !column.IsNullable)
+            {
+                sb.AppendLine($"        public {csharpType} {propertyName} {{ get; set; }} = string.Empty;");
+            }
+            else
+            {
+                sb.AppendLine($"        public {csharpType} {propertyName} {{ get; set; }}");
+            }
             sb.AppendLine();
         }
 

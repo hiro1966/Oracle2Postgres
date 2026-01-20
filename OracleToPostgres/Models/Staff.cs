@@ -8,15 +8,17 @@ namespace OracleToPostgres.Models
     public class Staff
     {
         [Key]
-        [MaxLength(20)]
-        public string Id { get; set; }
+        [Required]
+        public int Id { get; set; }
 
         [MaxLength(100)]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
-        [MaxLength(2)]
-        public string JobTypeCode { get; set; }
+        [MaxLength(10)]
+        [Column("job_type_code")]
+        public string JobTypeCode { get; set; } = string.Empty;
 
+        [Column("created_at")]
         public DateTime? CreatedAt { get; set; }
 
     }
