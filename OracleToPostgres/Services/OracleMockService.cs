@@ -66,11 +66,11 @@ namespace OracleToPostgres.Services
         private DataTable GenerateDepartmentsMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("ID", typeof(int));
-            table.Columns.Add("CODE", typeof(string));
-            table.Columns.Add("NAME", typeof(string));
-            table.Columns.Add("DISPLAY_ORDER", typeof(int));
-            table.Columns.Add("CREATED_AT", typeof(DateTime));
+            table.Columns.Add("id", typeof(int));
+            table.Columns.Add("code", typeof(string));
+            table.Columns.Add("name", typeof(string));
+            table.Columns.Add("display_order", typeof(int));
+            table.Columns.Add("created_at", typeof(DateTime));
 
             table.Rows.Add(1, "INT", "内科", 1, DateTime.Now.AddMonths(-12));
             table.Rows.Add(2, "SUR", "外科", 2, DateTime.Now.AddMonths(-12));
@@ -85,11 +85,11 @@ namespace OracleToPostgres.Services
         private DataTable GenerateDoctorsMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("CODE", typeof(string));
-            table.Columns.Add("NAME", typeof(string));
-            table.Columns.Add("DEPARTMENT_CODE", typeof(string));
-            table.Columns.Add("DISPLAY_ORDER", typeof(int));
-            table.Columns.Add("CREATED_AT", typeof(DateTime));
+            table.Columns.Add("code", typeof(string));
+            table.Columns.Add("name", typeof(string));
+            table.Columns.Add("department_code", typeof(string));
+            table.Columns.Add("display_order", typeof(int));
+            table.Columns.Add("created_at", typeof(DateTime));
 
             table.Rows.Add("D001", "田中 太郎", "INT", 1, DateTime.Now.AddMonths(-10));
             table.Rows.Add("D002", "鈴木 花子", "INT", 2, DateTime.Now.AddMonths(-9));
@@ -105,12 +105,12 @@ namespace OracleToPostgres.Services
         private DataTable GenerateWardsMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("ID", typeof(int));
-            table.Columns.Add("CODE", typeof(string));
-            table.Columns.Add("NAME", typeof(string));
-            table.Columns.Add("CAPACITY", typeof(int));
-            table.Columns.Add("DISPLAY_ORDER", typeof(int));
-            table.Columns.Add("CREATED_AT", typeof(DateTime));
+            table.Columns.Add("id", typeof(int));
+            table.Columns.Add("code", typeof(string));
+            table.Columns.Add("name", typeof(string));
+            table.Columns.Add("capacity", typeof(int));
+            table.Columns.Add("display_order", typeof(int));
+            table.Columns.Add("created_at", typeof(DateTime));
 
             table.Rows.Add(1, "W01", "一般病棟A", 50, 1, DateTime.Now.AddMonths(-12));
             table.Rows.Add(2, "W02", "一般病棟B", 40, 2, DateTime.Now.AddMonths(-12));
@@ -124,16 +124,16 @@ namespace OracleToPostgres.Services
         private DataTable GenerateStaffMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("ID", typeof(string));
-            table.Columns.Add("NAME", typeof(string));
-            table.Columns.Add("JOB_TYPE_CODE", typeof(string));
-            table.Columns.Add("CREATED_AT", typeof(DateTime));
+            table.Columns.Add("id", typeof(int));
+            table.Columns.Add("name", typeof(string));
+            table.Columns.Add("job_type_code", typeof(string));
+            table.Columns.Add("created_at", typeof(DateTime));
 
-            table.Rows.Add("S001", "看護師 A", "01", DateTime.Now.AddMonths(-10));
-            table.Rows.Add("S002", "看護師 B", "01", DateTime.Now.AddMonths(-9));
-            table.Rows.Add("S003", "薬剤師 A", "02", DateTime.Now.AddMonths(-8));
-            table.Rows.Add("S004", "放射線技師 A", "03", DateTime.Now.AddMonths(-7));
-            table.Rows.Add("S005", "検査技師 A", "04", DateTime.Now.AddMonths(-6));
+            table.Rows.Add(1, "看護師 A", "01", DateTime.Now.AddMonths(-10));
+            table.Rows.Add(2, "看護師 B", "01", DateTime.Now.AddMonths(-9));
+            table.Rows.Add(3, "薬剤師 A", "02", DateTime.Now.AddMonths(-8));
+            table.Rows.Add(4, "放射線技師 A", "03", DateTime.Now.AddMonths(-7));
+            table.Rows.Add(5, "検査技師 A", "04", DateTime.Now.AddMonths(-6));
 
             Log.Information($"[MOCK] Staff: {table.Rows.Count}件のダミーデータを生成しました");
             return table;
@@ -142,9 +142,9 @@ namespace OracleToPostgres.Services
         private DataTable GeneratePermissionsMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("JOB_TYPE_CODE", typeof(string));
-            table.Columns.Add("JOB_TYPE_NAME", typeof(string));
-            table.Columns.Add("LEVEL", typeof(int));
+            table.Columns.Add("job_type_code", typeof(string));
+            table.Columns.Add("job_type_name", typeof(string));
+            table.Columns.Add("level", typeof(int));
 
             table.Rows.Add("01", "看護師", 2);
             table.Rows.Add("02", "薬剤師", 2);
@@ -159,12 +159,12 @@ namespace OracleToPostgres.Services
         private DataTable GenerateOutpatientRecordsMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("ID", typeof(int));
-            table.Columns.Add("DATE", typeof(DateTime));
-            table.Columns.Add("DEPARTMENT_ID", typeof(int));
-            table.Columns.Add("NEW_PATIENTS_COUNT", typeof(int));
-            table.Columns.Add("RETURNING_PATIENTS_COUNT", typeof(int));
-            table.Columns.Add("CREATED_AT", typeof(DateTime));
+            table.Columns.Add("id", typeof(int));
+            table.Columns.Add("date", typeof(DateTime));
+            table.Columns.Add("department_id", typeof(int));
+            table.Columns.Add("new_patients_count", typeof(int));
+            table.Columns.Add("returning_patients_count", typeof(int));
+            table.Columns.Add("created_at", typeof(DateTime));
 
             var random = new Random();
             var baseDate = DateTime.Today.AddDays(-30);
@@ -192,16 +192,16 @@ namespace OracleToPostgres.Services
         private DataTable GenerateInpatientRecordsMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("ID", typeof(int));
-            table.Columns.Add("DATE", typeof(DateTime));
-            table.Columns.Add("WARD_ID", typeof(int));
-            table.Columns.Add("DEPARTMENT_ID", typeof(int));
-            table.Columns.Add("CURRENT_PATIENT_COUNT", typeof(int));
-            table.Columns.Add("NEW_ADMISSION_COUNT", typeof(int));
-            table.Columns.Add("DISCHARGE_COUNT", typeof(int));
-            table.Columns.Add("TRANSFER_OUT_COUNT", typeof(int));
-            table.Columns.Add("TRANSFER_IN_COUNT", typeof(int));
-            table.Columns.Add("CREATED_AT", typeof(DateTime));
+            table.Columns.Add("id", typeof(int));
+            table.Columns.Add("date", typeof(DateTime));
+            table.Columns.Add("ward_id", typeof(int));
+            table.Columns.Add("department_id", typeof(int));
+            table.Columns.Add("current_patient_count", typeof(int));
+            table.Columns.Add("new_admission_count", typeof(int));
+            table.Columns.Add("discharge_count", typeof(int));
+            table.Columns.Add("transfer_out_count", typeof(int));
+            table.Columns.Add("transfer_in_count", typeof(int));
+            table.Columns.Add("created_at", typeof(DateTime));
 
             var random = new Random();
             var baseDate = DateTime.Today.AddDays(-30);
@@ -233,11 +233,11 @@ namespace OracleToPostgres.Services
         private DataTable GenerateSalesMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("DOCTOR_CODE", typeof(string));
-            table.Columns.Add("YEAR_MONTH", typeof(string));
-            table.Columns.Add("OUTPATIENT_SALES", typeof(long));
-            table.Columns.Add("INPATIENT_SALES", typeof(long));
-            table.Columns.Add("UPDATED_AT", typeof(DateTime));
+            table.Columns.Add("doctor_code", typeof(string));
+            table.Columns.Add("year_month", typeof(string));
+            table.Columns.Add("outpatient_sales", typeof(decimal));
+            table.Columns.Add("inpatient_sales", typeof(decimal));
+            table.Columns.Add("updated_at", typeof(DateTime));
 
             var random = new Random();
             var doctors = new[] { "D001", "D002", "D003", "D004", "D005", "D006" };
@@ -267,9 +267,9 @@ namespace OracleToPostgres.Services
         private DataTable GenerateMessagesMockData()
         {
             var table = new DataTable();
-            table.Columns.Add("ID", typeof(int));
-            table.Columns.Add("CONTENT", typeof(string));
-            table.Columns.Add("CREATED_AT", typeof(DateTime));
+            table.Columns.Add("id", typeof(int));
+            table.Columns.Add("content", typeof(string));
+            table.Columns.Add("created_at", typeof(DateTime));
 
             table.Rows.Add(1, "システムメンテナンスのお知らせ", DateTime.Now.AddDays(-7));
             table.Rows.Add(2, "新しい電子カルテシステムの導入について", DateTime.Now.AddDays(-5));
