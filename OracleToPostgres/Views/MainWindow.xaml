@@ -49,7 +49,7 @@
 
                 <ProgressBar Grid.Row="1"
                              Height="30"
-                             Value="{Binding ProgressPercentage}"
+                             Value="{Binding ProgressPercentage, Mode=OneWay}"
                              Minimum="0"
                              Maximum="100"
                              Margin="0,0,0,10"/>
@@ -62,7 +62,7 @@
                     <Run Text=" / "/>
                     <Run Text="{Binding TotalRecords}" FontWeight="Bold"/>
                     <Run Text=" 件 ("/>
-                    <Run Text="{Binding ProgressPercentage, StringFormat={}{0:F1}}"/>
+                    <Run Text="{Binding ProgressPercentage, Mode=OneWay, StringFormat={}{0:F1}}"/>
                     <Run Text="%)"/>
                 </TextBlock>
             </Grid>
