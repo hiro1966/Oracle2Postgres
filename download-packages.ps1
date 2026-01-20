@@ -4,6 +4,7 @@
 $packages = @(
     @{Id="LiveChartsCore.SkiaSharpView.WPF"; Version="2.0.0-rc2"},
     @{Id="Microsoft.Extensions.Configuration"; Version="6.0.1"},
+    @{Id="Microsoft.Extensions.Configuration.Binder"; Version="6.0.0"},
     @{Id="Microsoft.Extensions.Configuration.Json"; Version="6.0.0"},
     @{Id="Npgsql"; Version="6.0.11"},
     @{Id="Serilog"; Version="3.1.1"},
