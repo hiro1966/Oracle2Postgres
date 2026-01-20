@@ -10,9 +10,9 @@ namespace OracleToPostgres.Services
     /// Oracle接続のモックアップサービス
     /// テスト用のダミーデータを返す
     /// </summary>
-    public class OracleMockService
+    public class OracleMockService : IDataSource
     {
-        public async Task<DataTable> ExecuteQueryAsync(string query, string taskName)
+        public async Task<DataTable> ReadDataAsync(string query, string taskName)
         {
             Log.Information($"[MOCK] {taskName}: クエリを実行しています（モックデータを返します）");
             Log.Debug($"[MOCK] Query: {query}");
