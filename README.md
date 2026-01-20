@@ -148,7 +148,8 @@ https://www.oracle.com/database/technologies/instant-client/downloads.html
   },
   "AppSettings": {
     "AutoCloseOnCompletion": true,
-    "CloseDelaySeconds": 3
+    "CloseDelaySeconds": 3,
+    "UseMockDataSource": true
   }
 }
 ```
@@ -187,6 +188,27 @@ https://www.oracle.com/database/technologies/instant-client/downloads.html
 **AppSettings:**
 - `AutoCloseOnCompletion`: 処理完了後に自動終了するか
 - `CloseDelaySeconds`: 自動終了までの待機秒数
+- `UseMockDataSource`: モックデータソースを使用するか（true: モック、false: 本番Oracle）
+
+### 🔧 モックデータソースについて
+
+開発中やテスト時に、実際のOracleに接続せずに動作確認ができます。
+
+**モックモードの特徴：**
+- ✅ Oracleへの接続不要
+- ✅ テスト用のダミーデータを自動生成
+- ✅ 9つのテーブル（部門、医師、病棟、スタッフ、権限、外来、入院、売上、メッセージ）に対応
+- ✅ リアルなテストデータで動作確認が可能
+
+**設定方法：**
+
+```json
+"AppSettings": {
+  "UseMockDataSource": true   // モックを使用
+}
+```
+
+本番環境では `false` に設定してください。
 
 ### 5. Oracle ODBCドライバ名の確認方法
 

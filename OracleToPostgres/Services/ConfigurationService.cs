@@ -74,5 +74,8 @@ namespace OracleToPostgres.Services
 
         public int GetCloseDelaySeconds() =>
             int.TryParse(_configuration["AppSettings:CloseDelaySeconds"], out var delay) ? delay : 3;
+
+        public bool GetUseMockDataSource() =>
+            bool.TryParse(_configuration["AppSettings:UseMockDataSource"], out var useMock) && useMock;
     }
 }

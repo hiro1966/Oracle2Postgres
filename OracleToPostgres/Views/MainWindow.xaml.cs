@@ -75,6 +75,7 @@ namespace OracleToPostgres.Views
                 var postgresConn = _configService.GetPostgresConnectionString();
                 var batchSize = _configService.GetBatchSize();
                 var tasks = _configService.GetDataTransferTasks();
+                var useMock = _configService.GetUseMockDataSource();
 
                 if (tasks.Count == 0)
                 {
@@ -89,9 +90,22 @@ namespace OracleToPostgres.Views
 
                 _viewModel.AddLogMessage($"転送タスク数: {tasks.Count}");
 
+                // データソースの作成（モック or 本番）
+                IDataSource dataSource;
+                if (useMock)
+                {
+                    _viewModel.AddLogMessage("🔧 モックデータソースを使用します");
+                    dataSource = new OracleMockService();
+                }
+                else
+                {
+                    _viewModel.AddLogMessage("🔌 本番Oracle接続を使用します");
+                    dataSource = new OracleDataSource(oracleConn);
+                }
+
                 // データ転送サービスの作成
                 var transferService = new DataTransferService(
-                    oracleConn,
+                    dataSource,
                     postgresConn,
                     batchSize,
                     _configService);

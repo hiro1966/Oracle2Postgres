@@ -11,7 +11,7 @@ namespace OracleToPostgres.Services
 {
     public class DataTransferService
     {
-        private readonly string _oracleConnectionString;
+        private readonly IDataSource _dataSource;
         private readonly string _defaultPostgresConnectionString;
         private readonly int _batchSize;
         private readonly DataTransformService _transformService;
@@ -22,12 +22,12 @@ namespace OracleToPostgres.Services
         public event EventHandler<TaskProgressEventArgs>? TaskProgressChanged;
 
         public DataTransferService(
-            string oracleConnectionString,
+            IDataSource dataSource,
             string postgresConnectionString,
             int batchSize,
             ConfigurationService configService)
         {
-            _oracleConnectionString = oracleConnectionString;
+            _dataSource = dataSource;
             _defaultPostgresConnectionString = postgresConnectionString;
             _batchSize = batchSize;
             _configService = configService;
@@ -45,7 +45,7 @@ namespace OracleToPostgres.Services
             try
             {
                 LogMessage($"データ転送を開始します（タスク数: {tasks.Count}）");
-                LogMessage($"Oracle接続: {MaskConnectionString(_oracleConnectionString)}");
+                LogMessage($"データソース: {_dataSource.GetType().Name}");
 
                 multiResult.TotalTasks = tasks.Count;
 
@@ -128,9 +128,9 @@ namespace OracleToPostgres.Services
                     LogMessage($"[{task.TaskName}] デフォルトのPostgreSQL接続を使用します");
                 }
 
-                // 1. データの読み込み（Oracle）
-                LogMessage($"[{task.TaskName}] Oracleからデータを読み込んでいます...");
-                var dataTable = await ReadFromOracleAsync(task.OracleQuery, task.TaskName);
+                // 1. データの読み込み
+                LogMessage($"[{task.TaskName}] データを読み込んでいます...");
+                var dataTable = await _dataSource.ReadDataAsync(task.OracleQuery, task.TaskName);
                 result.TotalRecords = dataTable.Rows.Count;
                 LogMessage($"[{task.TaskName}] {result.TotalRecords} 件のレコードを読み込みました");
 
@@ -167,25 +167,7 @@ namespace OracleToPostgres.Services
             return result;
         }
 
-        private async Task<DataTable> ReadFromOracleAsync(string query, string taskName)
-        {
-            var dataTable = new DataTable();
 
-            await Task.Run(() =>
-            {
-                using var connection = new OdbcConnection(_oracleConnectionString);
-                connection.Open();
-                LogMessage($"[{taskName}] Oracle接続成功");
-
-                using var command = new OdbcCommand(query, connection);
-                command.CommandTimeout = 300; // 5分
-
-                using var adapter = new OdbcDataAdapter(command);
-                adapter.Fill(dataTable);
-            });
-
-            return dataTable;
-        }
 
         private async Task WriteToPostgresAsync(DataTable dataTable, string tableName, string taskName, TransferResult result, string connectionString)
         {
