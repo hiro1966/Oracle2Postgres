@@ -2,7 +2,16 @@
 
 Windows 10用のデスクトップアプリケーションで、OracleデータベースからPostgreSQLへのデータ転送を行います。
 
+## プロジェクト構成
+
+このリポジトリには2つのツールが含まれています：
+
+1. **OracleToPostgres** - メインのデータ転送ツール（WPF）
+2. **ModelGenerator** - PostgreSQLテーブルからC#モデルを自動生成するCLIツール
+
 ## 機能
+
+### OracleToPostgres（メインツール）
 
 - ✅ ODBC経由でOracleデータベースに接続
 - ✅ PostgreSQLへのデータ書き込み（Npgsql使用）
@@ -14,6 +23,16 @@ Windows 10用のデスクトップアプリケーションで、Oracleデータ�
 - ✅ バッチ処理でパフォーマンス最適化
 - ✅ エラーハンドリングと詳細ログ
 - ✅ **完全オフライン環境対応**（NuGetパッケージ同梱）
+
+### ModelGenerator（開発支援ツール）
+
+- ✅ PostgreSQLデータベース全テーブルのスキャン
+- ✅ C#モデルクラスの自動生成
+- ✅ Data Annotations対応
+- ✅ Nullable型の自動判定
+- ✅ スネークケース → パスカルケース変換
+
+**詳細は [ModelGenerator/README.md](ModelGenerator/README.md) を参照**
 
 ## 必要な環境
 

@@ -6,3 +6,5 @@ obj/
 .vs/
 Logs/
 *.log
+GeneratedModels/
+ModelGenerator/GeneratedModels/
